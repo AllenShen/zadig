@@ -6,6 +6,7 @@ metadata:
   labels:
     app: nginx
     tier: backend
+    hello: world
     version: "{{.nginxVersion}}"
 spec:
   type: NodePort
