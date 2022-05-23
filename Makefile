@@ -1,4 +1,4 @@
-# New Makefile for multi-architecture test test test 
+# New Makefile for multi-architecture test test test1
 .PHONY: all
 
 IMAGE_REPOSITORY = ccr.ccs.tencentyun.com/koderover-rc
