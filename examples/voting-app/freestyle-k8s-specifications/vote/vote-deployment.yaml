@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: vote
-    hello: world4
+    hello: world5
   name: vote-rc-origin
 spec:
   replicas: 1
