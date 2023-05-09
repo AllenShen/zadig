@@ -50,6 +50,7 @@ var GlobalKeys = sets.NewString([]string{"LOGBACK_CONFIGMAP", "NODE_AFFINITY", "
 var ComplexServiceKeys = sets.NewString([]string{"GENERAL_CONFIGMAP", "HOSTALIASES"}...)
 
 var write bool = false
+var skip1160 bool = false
 var outPutMessages = false
 var appointedTemplates string = ""
 var appointedProjects string = ""
@@ -133,6 +134,9 @@ func handleServiceByTemplate() error {
 		for _, product := range envs {
 			log.Infof("\n+++++++++++ handling product %s/%s +++++++++++", project.ProductName, product.EnvName)
 			for _, service := range product.GetServiceMap() {
+				if allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, service.ServiceName)] == nil {
+					allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, service.ServiceName)] = sets.NewInt64()
+				}
 				allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, service.ServiceName)].Insert(service.Revision)
 			}
 		}

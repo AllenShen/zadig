@@ -57,6 +57,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP("connection-string", "c", "", "mongodb connection string")
 	rootCmd.PersistentFlags().StringP("database", "d", "", "name of the database")
 	rootCmd.PersistentFlags().BoolP("write", "r", false, "write data")
+	rootCmd.PersistentFlags().BoolP("skip", "s", false, "skip 1160 migration")
 	rootCmd.PersistentFlags().BoolP("message", "m", false, "detailed message")
 	rootCmd.PersistentFlags().StringP("templates", "t", "", "appointed templates")
 	rootCmd.PersistentFlags().StringP("projects", "p", "", "appointed project")
@@ -64,6 +65,7 @@ func init() {
 	_ = viper.BindPFlag(setting.ENVMongoDBConnectionString, rootCmd.PersistentFlags().Lookup("connection-string"))
 	_ = viper.BindPFlag(setting.ENVAslanDBName, rootCmd.PersistentFlags().Lookup("database"))
 	_ = viper.BindPFlag("Write", rootCmd.PersistentFlags().Lookup("write"))
+	_ = viper.BindPFlag("Skip", rootCmd.PersistentFlags().Lookup("skip"))
 	_ = viper.BindPFlag("Message", rootCmd.PersistentFlags().Lookup("message"))
 	_ = viper.BindPFlag("Templates", rootCmd.PersistentFlags().Lookup("templates"))
 	_ = viper.BindPFlag("Projects", rootCmd.PersistentFlags().Lookup("projects"))
@@ -80,20 +82,25 @@ func initConfig() {
 
 func run() error {
 	write = viper.GetBool("Write")
+	skip1160 = viper.GetBool("Skip")
 	outPutMessages = viper.GetBool("Message")
 	appointedTemplates = viper.GetString("Templates")
 	appointedProjects = viper.GetString("Projects")
 
-	// 1.15.0 - 1.16.0
-	log.Infof("************ executing from 1.15.0 to 1.16.0 ************")
-	err := migrate.V1150ToV1160()
-	if err != nil {
-		return err
+	if !skip1160 {
+		// 1.15.0 - 1.16.0
+		log.Infof("************ executing from 1.15.0 to 1.16.0 ************")
+		err := migrate.V1150ToV1160()
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Infof("************ [skipped] executing from 1.15.0 to 1.16.0 ************")
 	}
 
 	// 1.16.0 数据变更
 	log.Infof("************ executing 1.16.0 variables ************")
-	err = handlerServices()
+	err := handlerServices()
 	if err != nil {
 		return err
 	}
