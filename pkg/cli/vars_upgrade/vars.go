@@ -44,7 +44,7 @@ var templateMap = make(map[string]*models.YamlTemplate)
 var defaultRenderMap = make(map[string]*models.RenderSet)
 
 // 全局变量定义
-var GlobalKeys = sets.NewString([]string{"LOGBACK_CONFIGMAP", "NODE_AFFINITY", "TOLERATIONS", "IMAGE_PULL_SECRETS"}...)
+var GlobalKeys = sets.NewString([]string{"LOGBACK_CONFIGMAP", "NODE_AFFINITY", "TOLERATIONS", "IMAGE_PULL_SECRETS", "GATEWAY_API_PVC", "GATEWAY_USER_API_PVC", "LOTUS_FILE_VIEW_PVC_NAME"}...)
 
 // 复杂服务变量定义
 var ComplexServiceKeys = sets.NewString([]string{"GENERAL_CONFIGMAP", "HOSTALIASES"}...)
@@ -52,8 +52,86 @@ var ComplexServiceKeys = sets.NewString([]string{"GENERAL_CONFIGMAP", "HOSTALIAS
 var write bool = false
 var skip1160 bool = false
 var outPutMessages = false
+var serviceVarsOnly = false
 var appointedTemplates string = ""
 var appointedProjects string = ""
+
+// 单独设置服务可见性
+func handleServiceVars() error {
+
+	//找到所有当前在用的服务以及版本
+	temProducts, err := templaterepo.NewProductColl().ListWithOption(&templaterepo.ProductListOpt{
+		DeployType:    setting.K8SDeployType,
+		BasicFacility: setting.BasicFacilityK8S,
+	})
+	if err != nil {
+		log.Errorf("handleServiceByTemplate list projects error: %s", err)
+		return fmt.Errorf("handleServiceByTemplate list projects error: %s", err)
+	}
+	for _, project := range temProducts {
+		envs, err := mongodb.NewProductColl().List(&mongodb.ProductListOptions{
+			Name: project.ProductName,
+		})
+		if err != nil {
+			return fmt.Errorf("!!!!!!!!! [handleServiceByTemplate]failed to find envs in project %s , err: %s", project.ProductName, err)
+		}
+		for _, product := range envs {
+			log.Infof("\n+++++++++++ handling product %s/%s +++++++++++", project.ProductName, product.EnvName)
+			for _, service := range product.GetServiceMap() {
+				if allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, service.ServiceName)] == nil {
+					allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, service.ServiceName)] = sets.NewInt64()
+				}
+				allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, service.ServiceName)].Insert(service.Revision)
+			}
+		}
+
+		services, err := mongodb.NewServiceColl().ListMaxRevisions(&mongodb.ServiceListOption{
+			ProductName: project.ProductName,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to list services for project %s, err: %s", project.ProductName, err)
+		}
+		for _, svc := range services {
+			if allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, svc.ServiceName)] == nil {
+				allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, svc.ServiceName)] = sets.NewInt64()
+			}
+			allServiceRevision[fmt.Sprintf("%s/%s", project.ProductName, svc.ServiceName)].Insert(svc.Revision)
+		}
+	}
+
+	for key, revisions := range allServiceRevision {
+		log.Infof("service %s has revisions %v", key, revisions.List())
+		for _, revision := range revisions.List() {
+			splitNames := strings.Split(key, "/")
+			projectName := splitNames[0]
+			serviceName := splitNames[1]
+
+			svc, err := mongodb.NewServiceColl().Find(&mongodb.ServiceFindOption{
+				ServiceName: serviceName,
+				ProductName: projectName,
+				Revision:    revision,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to find service %s/%s, err: %s", projectName, serviceName, err)
+			}
+
+			if len(svc.ServiceVars) > 0 {
+				continue
+			}
+			if len(svc.VariableYaml) == 0 {
+				continue
+			}
+			svc.ServiceVars = extractServiceVars(svc.VariableYaml, svc)
+			err = mongodb.NewServiceColl().UpdateServiceVariables(svc)
+			if err != nil {
+				return fmt.Errorf("failed to update service %s/%s/%d, err: %s", projectName, serviceName, revision, err)
+			}
+		}
+		log.Infof("service %s handled successfully", key)
+	}
+
+	return nil
+}
 
 func handlerServices() error {
 	err := getYamlTemplates()

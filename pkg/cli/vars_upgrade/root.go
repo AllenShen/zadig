@@ -58,6 +58,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP("database", "d", "", "name of the database")
 	rootCmd.PersistentFlags().BoolP("write", "r", false, "write data")
 	rootCmd.PersistentFlags().BoolP("skip", "s", false, "skip 1160 migration")
+	rootCmd.PersistentFlags().BoolP("service-vars", "v", false, "service-vars only")
 	rootCmd.PersistentFlags().BoolP("message", "m", false, "detailed message")
 	rootCmd.PersistentFlags().StringP("templates", "t", "", "appointed templates")
 	rootCmd.PersistentFlags().StringP("projects", "p", "", "appointed project")
@@ -66,6 +67,7 @@ func init() {
 	_ = viper.BindPFlag(setting.ENVAslanDBName, rootCmd.PersistentFlags().Lookup("database"))
 	_ = viper.BindPFlag("Write", rootCmd.PersistentFlags().Lookup("write"))
 	_ = viper.BindPFlag("Skip", rootCmd.PersistentFlags().Lookup("skip"))
+	_ = viper.BindPFlag("ServiceVarsOnly", rootCmd.PersistentFlags().Lookup("service-vars"))
 	_ = viper.BindPFlag("Message", rootCmd.PersistentFlags().Lookup("message"))
 	_ = viper.BindPFlag("Templates", rootCmd.PersistentFlags().Lookup("templates"))
 	_ = viper.BindPFlag("Projects", rootCmd.PersistentFlags().Lookup("projects"))
@@ -83,9 +85,14 @@ func initConfig() {
 func run() error {
 	write = viper.GetBool("Write")
 	skip1160 = viper.GetBool("Skip")
+	serviceVarsOnly = viper.GetBool("ServiceVarsOnly")
 	outPutMessages = viper.GetBool("Message")
 	appointedTemplates = viper.GetString("Templates")
 	appointedProjects = viper.GetString("Projects")
+
+	if serviceVarsOnly {
+		return handleServiceVars()
+	}
 
 	if !skip1160 {
 		// 1.15.0 - 1.16.0
