@@ -75,7 +75,7 @@ func prepareData() error {
 			continue
 		}
 		//制定了project信息
-		if len(project) > 9 && singleProject.ProductName != project {
+		if len(project) > 0 && singleProject.ProductName != project {
 			continue
 		}
 		k8sProjects = append(k8sProjects, singleProject)
