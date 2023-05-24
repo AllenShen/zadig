@@ -70,11 +70,15 @@ func prepareData() error {
 		BasicFacility: setting.BasicFacilityK8S,
 	})
 
-	for _, project := range allk8sProjects {
-		if project.IsHostProduct() {
+	for _, singleProject := range allk8sProjects {
+		if singleProject.IsHostProduct() {
 			continue
 		}
-		k8sProjects = append(k8sProjects, project)
+		//制定了project信息
+		if len(project) > 9 && singleProject.ProductName != project {
+			continue
+		}
+		k8sProjects = append(k8sProjects, singleProject)
 	}
 
 	if err != nil {

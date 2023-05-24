@@ -34,6 +34,15 @@ var write bool = false
 var skip1160 bool = false
 var outPutMessages = false
 
+var crateTempRole = false
+var fetchProjectAdmin = false
+
+var apiUrl string = "http://dev150.8slan.com"
+var targetRole string
+var fromRole string
+var project string
+var token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiYWRtaW4iLCJlbWFpbCI6ImFkbWluQGtvZGVyb3Zlci5jb20iLCJ1aWQiOiIwMjVhY2NlMC1mNzgyLTExZWQtYTNhMC04ZTdjMTg4OTg0YjMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbiIsImZlZGVyYXRlZF9jbGFpbXMiOnsiY29ubmVjdG9yX2lkIjoic3lzdGVtIiwidXNlcl9pZCI6ImFkbWluIn0sImF1ZCI6InphZGlnIiwiZXhwIjoxNjg0OTkzMzA2fQ.-gXJDuEa7KNeFN4_4LgjgsPv1XDyrAN9yYgjYF_C4-o"
+
 var rootCmd = &cobra.Command{
 	Use:   "vars-upgrade",
 	Short: "An upgrade assistant for Zadig",
@@ -60,21 +69,36 @@ func init() {
 
 	rootCmd.PersistentFlags().StringP("connection-string", "c", "", "mongodb connection string")
 	rootCmd.PersistentFlags().StringP("database", "d", "", "name of the database")
+
+	rootCmd.PersistentFlags().StringP("project", "", "", "specific project")
+	rootCmd.PersistentFlags().StringP("target-role", "", "", "target role")
+	rootCmd.PersistentFlags().StringP("from-role", "", "", "from role")
+	rootCmd.PersistentFlags().StringP("host", "", "", "zadig host")
+	rootCmd.PersistentFlags().StringP("token", "", "", "zadig admin auth token")
+
 	rootCmd.PersistentFlags().BoolP("write", "r", false, "write data")
 	rootCmd.PersistentFlags().BoolP("skip", "s", false, "skip 1160 migration")
-	//rootCmd.PersistentFlags().BoolP("service-vars", "v", false, "service-vars only")
 	rootCmd.PersistentFlags().BoolP("message", "m", false, "detailed message")
-	//rootCmd.PersistentFlags().StringP("templates", "t", "", "appointed templates")
-	//rootCmd.PersistentFlags().StringP("projects", "p", "", "appointed project")
+
+	rootCmd.PersistentFlags().BoolP("role", "", false, "create temp role")
+	rootCmd.PersistentFlags().BoolP("fetch", "", false, "fetchProjectAdmin")
 
 	_ = viper.BindPFlag(setting.ENVMongoDBConnectionString, rootCmd.PersistentFlags().Lookup("connection-string"))
 	_ = viper.BindPFlag(setting.ENVAslanDBName, rootCmd.PersistentFlags().Lookup("database"))
+
+	_ = viper.BindPFlag("Project", rootCmd.PersistentFlags().Lookup("project"))
+	_ = viper.BindPFlag("Host", rootCmd.PersistentFlags().Lookup("host"))
+	_ = viper.BindPFlag("TargetRole", rootCmd.PersistentFlags().Lookup("target-role"))
+	_ = viper.BindPFlag("FromRole", rootCmd.PersistentFlags().Lookup("from-role"))
+	_ = viper.BindPFlag("Token", rootCmd.PersistentFlags().Lookup("token"))
+
 	_ = viper.BindPFlag("Write", rootCmd.PersistentFlags().Lookup("write"))
 	_ = viper.BindPFlag("Skip", rootCmd.PersistentFlags().Lookup("skip"))
-	//_ = viper.BindPFlag("ServiceVarsOnly", rootCmd.PersistentFlags().Lookup("service-vars"))
 	_ = viper.BindPFlag("Message", rootCmd.PersistentFlags().Lookup("message"))
-	//_ = viper.BindPFlag("Templates", rootCmd.PersistentFlags().Lookup("templates"))
-	//_ = viper.BindPFlag("Projects", rootCmd.PersistentFlags().Lookup("projects"))
+
+	_ = viper.BindPFlag("Role", rootCmd.PersistentFlags().Lookup("role"))
+	_ = viper.BindPFlag("FetchProjectAdmin", rootCmd.PersistentFlags().Lookup("fetch"))
+
 }
 
 func initConfig() {
@@ -84,6 +108,28 @@ func initConfig() {
 		Level:    "debug",
 		NoCaller: true,
 	})
+}
+
+func handleAuths() error {
+	// 准备数据
+	err := prepareData()
+	if err != nil {
+		return err
+	}
+
+	if crateTempRole {
+		return createTempRoles()
+	}
+
+	if fetchProjectAdmin {
+		return fetchAllProjectAdmins()
+	}
+
+	if len(fromRole) > 0 && len(targetRole) > 0 {
+		return setUserProjectRoles()
+	}
+
+	return nil
 }
 
 // 从1.15.0处理变量
@@ -132,11 +178,21 @@ func run() error {
 	skip1160 = viper.GetBool("Skip")
 	//serviceVarsOnly = viper.GetBool("ServiceVarsOnly")
 	outPutMessages = viper.GetBool("Message")
-	//appointedTemplates = viper.GetString("Templates")
-	//appointedProjects = viper.GetString("Projects")
+
+	crateTempRole = viper.GetBool("Role")
+	fetchProjectAdmin = viper.GetBool("FetchProjectAdmin")
+
+	project = viper.GetString("Project")
+
+	targetRole = viper.GetString("TargetRole")
+	fromRole = viper.GetString("FromRole")
+	apiUrl = viper.GetString("Host")
+	token = viper.GetString("Token")
+
+	return handleAuths()
 
 	// 处理变量
-	err := handleVars()
+	err := handleAuths()
 	if err != nil {
 		return err
 	}
