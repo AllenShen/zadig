@@ -42,7 +42,7 @@ type Payload struct {
 	ProjectName string `json:"projectName"`
 }
 
-func setUserProjectRole(projectName string, uid, userName string) error {
+func setUserProjectRole(projectName string, uid, userName, targetRole string) error {
 	url := fmt.Sprintf("%s/api/v1/rolebindings/update?projectName=%s&bulk=true&userID=%s", apiUrl, projectName, uid)
 
 	roles := []Role{
@@ -131,8 +131,14 @@ func setUserProjectRoleByProject(projectName string) error {
 	}
 
 	for uid, userName := range uids {
-		err = setUserProjectRole(projectName, uid, userName)
+		err = setUserProjectRole(projectName, uid, userName, targetRole)
 		if err != nil {
+			err1 := setUserProjectRole(projectName, uid, userName, fromRole)
+			if err1 != nil {
+				fmt.Println("failed to set role back for user: ", userName, " uid: ", uid)
+			} else {
+				fmt.Println("set role back for user: ", userName, " uid: ", uid)
+			}
 			return err
 		}
 	}
