@@ -256,29 +256,28 @@ func GetProductionHelmServiceFilePath(serviceName, productName string, revision 
 	return GetProductionHelmFilePath(productName, serviceName, revision, dir)
 }
 
-// TODO add production parameter
-func GetFileContent(serviceName, productName string, param *GetFileContentParam, log *zap.SugaredLogger) (string, error) {
+func GetFileContent(serviceName, productName string, param *GetFileContentParam, production bool, log *zap.SugaredLogger) (string, error) {
 	filePath, fileName, revision, forDelivery := param.FilePath, param.FileName, param.Revision, param.DeliveryVersion
-	svc, err := commonrepo.NewServiceColl().Find(&commonrepo.ServiceFindOption{
+	svc, err := repository.QueryTemplateService(&commonrepo.ServiceFindOption{
 		ProductName: productName,
 		ServiceName: serviceName,
 		Revision:    revision,
-	})
+	}, production)
 	if err != nil {
 		return "", e.ErrFileContent.AddDesc(err.Error())
 	}
 
-	base := config.LocalTestServicePath(productName, serviceName)
+	base := config.LocalServicePath(productName, serviceName, production)
 	if revision > 0 {
-		base = config.LocalTestServicePathWithRevision(productName, serviceName, revision)
-		if err = commonutil.PreloadServiceManifestsByRevision(base, svc, false); err != nil {
+		base = config.LocalServicePathWithRevision(productName, serviceName, revision, production)
+		if err = commonutil.PreloadServiceManifestsByRevision(base, svc, production); err != nil {
 			log.Warnf("failed to get chart of revision: %d for service: %s, use latest version",
 				svc.Revision, svc.ServiceName)
 		}
 	}
 	if err != nil || revision == 0 {
-		base = config.LocalTestServicePath(productName, serviceName)
-		err = commonutil.PreLoadServiceManifests(base, svc, false)
+		base = config.LocalServicePath(productName, serviceName, production)
+		err = commonutil.PreLoadServiceManifests(base, svc, production)
 		if err != nil {
 			return "", e.ErrFileContent.AddDesc(err.Error())
 		}
@@ -286,48 +285,6 @@ func GetFileContent(serviceName, productName string, param *GetFileContentParam,
 
 	if forDelivery {
 		base = config.LocalDeliveryChartPathWithRevision(productName, serviceName, revision)
-	}
-
-	file := filepath.Join(base, serviceName, filePath, fileName)
-	fileContent, err := os.ReadFile(file)
-	if err != nil {
-		log.Errorf("Failed to read file %s, err: %s", file, err)
-		return "", e.ErrFileContent.AddDesc(err.Error())
-	}
-
-	return string(fileContent), nil
-}
-
-// TODO remove this funciton, use GetFileContent with production parameter instead
-func GetProductionServiceFileContent(serviceName, productName string, param *GetFileContentParam, log *zap.SugaredLogger) (string, error) {
-	filePath, fileName, revision, forDelivery := param.FilePath, param.FileName, param.Revision, param.DeliveryVersion
-	svc, err := commonrepo.NewProductionServiceColl().Find(&commonrepo.ServiceFindOption{
-		ProductName: productName,
-		ServiceName: serviceName,
-		Revision:    revision,
-	})
-	if err != nil {
-		return "", e.ErrFileContent.AddDesc(err.Error())
-	}
-
-	base := config.LocalProductionServicePath(productName, serviceName)
-	if revision > 0 {
-		base = config.LocalProductionServicePathWithRevision(productName, serviceName, revision)
-		if err = commonutil.PreloadProductionServiceManifestsByRevision(base, svc); err != nil {
-			log.Warnf("failed to get chart of revision: %d for service: %s, use latest version",
-				svc.Revision, svc.ServiceName)
-		}
-	}
-	if err != nil || revision == 0 {
-		base = config.LocalProductionServicePath(productName, serviceName)
-		err = commonutil.PreLoadProductionServiceManifests(base, svc)
-		if err != nil {
-			return "", e.ErrFileContent.AddDesc(err.Error())
-		}
-	}
-
-	if forDelivery {
-		base = config.LocalProductionDeliveryChartPathWithRevision(productName, serviceName, revision)
 	}
 
 	file := filepath.Join(base, serviceName, filePath, fileName)
@@ -1232,7 +1189,7 @@ func CreateOrUpdateBulkHelmServiceFromTemplate(projectName string, args *BulkHel
 	return resp, service.AutoDeployHelmServiceToEnvs(args.CreatedBy, args.RequestID, projectName, serviceList, logger)
 }
 
-// @Min TODO: handleSingleService is used by helm services creation from template, and production service creation from template is not supported.
+// @Min TODO: handleSingleService is used by helm services batch creation from template, and batch production service creation from template is not supported.
 // so all the helper function will currently use 'false' in the 'isProd' parameter.
 func handleSingleService(projectName string, repoConfig *commonservice.RepoConfig, path, fromPath string, args *BulkHelmServiceCreationArgs,
 	templateChartData *ChartTemplateData, force bool, logger *zap.SugaredLogger) (*templatemodels.ServiceRender, *commonmodels.Service, error) {

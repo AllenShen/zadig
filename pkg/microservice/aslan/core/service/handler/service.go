@@ -259,7 +259,7 @@ func HelmReleaseNaming(c *gin.Context) {
 	bs, _ := json.Marshal(args)
 	internalhandler.InsertOperationLog(c, ctx.UserName, projectName, "修改", "项目管理-服务", args.ServiceName, string(bs), ctx.Logger)
 
-	ctx.Err = svcservice.UpdateReleaseNamingRule(ctx.UserName, ctx.RequestID, projectName, args, ctx.Logger)
+	ctx.Err = svcservice.UpdateReleaseNamingRule(ctx.UserName, ctx.RequestID, projectName, args, false, ctx.Logger)
 }
 
 func DeleteServiceTemplate(c *gin.Context) {

@@ -159,7 +159,7 @@ func GetProductionHelmFileContent(c *gin.Context) {
 		return
 	}
 
-	ctx.Resp, ctx.Err = svcservice.GetProductionServiceFileContent(c.Param("name"), c.Query("projectName"), param, ctx.Logger)
+	ctx.Resp, ctx.Err = svcservice.GetFileContent(c.Param("name"), c.Query("projectName"), param, true, ctx.Logger)
 }
 
 func UpdateProductionHelmReleaseNaming(c *gin.Context) {
@@ -181,5 +181,5 @@ func UpdateProductionHelmReleaseNaming(c *gin.Context) {
 	bs, _ := json.Marshal(args)
 	internalhandler.InsertOperationLog(c, ctx.UserName, projectName, "修改", "项目管理-生产服务", args.ServiceName, string(bs), ctx.Logger)
 
-	ctx.Err = svcservice.UpdateProductionServiceReleaseNamingRule(ctx.UserName, ctx.RequestID, projectName, args, ctx.Logger)
+	ctx.Err = svcservice.UpdateReleaseNamingRule(ctx.UserName, ctx.RequestID, projectName, args, true, ctx.Logger)
 }

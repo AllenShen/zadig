@@ -77,7 +77,7 @@ func GetFileContent(c *gin.Context) {
 		return
 	}
 
-	ctx.Resp, ctx.Err = svcservice.GetFileContent(c.Param("serviceName"), c.Param("productName"), param, ctx.Logger)
+	ctx.Resp, ctx.Err = svcservice.GetFileContent(c.Param("serviceName"), c.Param("productName"), param, false, ctx.Logger)
 }
 
 func UpdateFileContent(c *gin.Context) {

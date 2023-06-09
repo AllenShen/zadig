@@ -49,28 +49,17 @@ func ListHelmReposPublic() ([]*commonmodels.HelmRepo, error) {
 
 func SaveAndUploadService(projectName, serviceName string, copies []string, fileTree fs.FS, isProduction bool) error {
 	var localBase, s3Base string
-	if !isProduction {
-		localBase = config.LocalTestServicePath(projectName, serviceName)
-		s3Base = config.ObjectStorageTestServicePath(projectName, serviceName)
-	} else {
-		localBase = config.LocalProductionServicePath(projectName, serviceName)
-		s3Base = config.ObjectStorageProductionServicePath(projectName, serviceName)
-	}
+	localBase = config.LocalServicePath(projectName, serviceName, isProduction)
+	s3Base = config.ObjectStorageServicePath(projectName, serviceName, isProduction)
 	names := append([]string{serviceName}, copies...)
 	return fsservice.SaveAndUploadFiles(fileTree, names, localBase, s3Base, log.SugaredLogger())
 }
 
 func CopyAndUploadService(projectName, serviceName, currentChartPath string, copies []string, isProduction bool) error {
 	var localBase, s3Base string
-	if !isProduction {
-		localBase = config.LocalTestServicePath(projectName, serviceName)
-		s3Base = config.ObjectStorageTestServicePath(projectName, serviceName)
-	} else {
-		localBase = config.LocalProductionServicePath(projectName, serviceName)
-		s3Base = config.ObjectStorageProductionServicePath(projectName, serviceName)
-	}
+	localBase = config.LocalServicePath(projectName, serviceName, isProduction)
+	s3Base = config.ObjectStorageServicePath(projectName, serviceName, isProduction)
 	names := append([]string{serviceName}, copies...)
-
 	return fsservice.CopyAndUploadFiles(names, path.Join(localBase, serviceName), s3Base, localBase, currentChartPath, log.SugaredLogger())
 }
 

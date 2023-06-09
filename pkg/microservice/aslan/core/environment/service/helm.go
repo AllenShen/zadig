@@ -287,6 +287,7 @@ func ListReleases(args *HelmReleaseQueryArgs, envName string, production bool, l
 	return ret, nil
 }
 
+// loadChartFilesInfo is used when creating helm versions
 func loadChartFilesInfo(productName, serviceName string, revision int64, dir string) ([]*types.FileInfo, error) {
 	base := config.LocalTestServicePathWithRevision(productName, serviceName, revision)
 
